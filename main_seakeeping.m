@@ -23,15 +23,15 @@ rho = 1000;
 %-DOF per Node:
 local_dof = 1;
 %-Order:
-N = 5;
+N = 0;
 %----------------
 % Pre-Processing
 %----------------
 Nurbs2D = iga2Dmesh(FileName,numPatch,local_dof);
 %
-sem2D = bem2Dmesh(Nurbs2D,N,local_dof);
-sem2D.rho = rho;
-sem2D.N = N;
+bem2D = bem2Dmesh(Nurbs2D,N,local_dof);
+bem2D.rho = rho;
+bem2D.N = N;
 %----------
 % Solution
 %----------
