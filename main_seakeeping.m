@@ -1,0 +1,70 @@
+%==========================================================================
+% Method        : Boundary Element Method (BEM) for Linear Seakeeping
+% Discretization: Panel Method (Constant / Linear / Higher-Order Elements)
+% Model         : Linear Potential Flow, Zero Forward Speed, Freq. Domain
+% Green Function: Free-Surface Green Function (Telste & Noblesse)
+%
+% Description:
+%  This code performs frequency-domain radiation and diffraction analyses
+%  for floating objects using a direct BEM formulation. The solver computes
+%  influence matrices based on the free-surface Green function and obtaines 
+%  added mass, radiation damping, wave exciting forces, and rigid-body RAOs 
+%  for the zero-speed seakeeping case.
+%
+% Author        : M. Erden Yildizdag
+%========================================================================== 
+clc; clear; close all;
+addpath('geometry')
+%-Read the Geometry:
+FileName = 'wigley1_';
+numPatch = 2;
+%Parameters:
+rho = 1000;
+%-DOF per Node:
+local_dof = 1;
+%-Order:
+N = 5;
+%----------------
+% Pre-Processing
+%----------------
+Nurbs2D = iga2Dmesh(FileName,numPatch,local_dof);
+%
+sem2D = bem2Dmesh(Nurbs2D,N,local_dof);
+sem2D.rho = rho;
+sem2D.N = N;
+%----------
+% Solution
+%----------
+% % [K,M] = global2D(sem2D);
+% % toc;
+% % %-Boundary Conditions:
+% % tic;
+% % x_max = max(sem2D.nodes(:,1));
+% % x_min = min(sem2D.nodes(:,1));
+% % y_max = max(sem2D.nodes(:,2));
+% % y_min = min(sem2D.nodes(:,2));
+% % ind = find(sem2D.nodes(:,1)<x_min+1E-3|sem2D.nodes(:,1)>x_max-1E-3|sem2D.nodes(:,2)<y_min+1E-3|sem2D.nodes(:,2)>y_max-1E-3);
+% % BounNodes = unique([3.*ind-2; 3.*ind-1; 3.*ind]);
+% % K(BounNodes,:) = []; K(:,BounNodes) = [];
+% % M(BounNodes,:) = []; M(:,BounNodes) = [];
+% % toc;
+% % tic;
+% % %-Eigenvalue Solver
+% % sigma = 1000;
+% % [V,freq] = eigs(K,M,modeNum,sigma);
+% % [freq,loc] = sort((sqrt(diag(freq)-sigma)));
+% % toc;
+% % V = V(:,loc);
+% % freqHz = freq/2/pi;
+% % %
+% % all_nodes = 1:sem2D.dof;
+% % active = setdiff(all_nodes,BounNodes);
+% % uModes = zeros(sem2D.dof,modeNum);
+% % uModes(active,1:modeNum) = uModes(active,1:modeNum) + V(:,1:modeNum);
+% % sem2D.uModes = uModes;
+% % sem2D.freq = freq;
+% % sem2D.freqHz = freqHz;
+% % %-----------------
+% % % Post-Processing
+% % %-----------------
+% % plotModeShapes(sem2D,modeNumPlot);
