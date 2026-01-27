@@ -23,7 +23,7 @@ rho = 1000;
 %-DOF per Node:
 local_dof = 1;
 %-Order:
-N = 0;
+N = 2;
 %----------------
 % Pre-Processing
 %----------------
