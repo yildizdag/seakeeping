@@ -12,10 +12,10 @@ if N == 0
 else
     nodeData = zeros((N+1)^2*nel,3);
 end
-%count_el = 1;
 count_node = 1;
 %
 if N == 0
+    el_xi = [-1 -1; 1 -1; -1 1; 1 1];
     xi = linspace(-1,1,2);
     eta = linspace(-1,1,2);
 else
@@ -33,38 +33,54 @@ for k = 1:Nurbs2D.numpatch
         u2 = Nurbs2D.knots.U{k}(iu+1);
         v1 = Nurbs2D.knots.V{k}(iv);
         v2 = Nurbs2D.knots.V{k}(iv+1);
-        u_sample = (0.5.*(1-xi).*u1+0.5.*(1+xi).*u2);
-        v_sample = (0.5.*(1-eta).*v1+0.5.*(1+eta).*v2);
+        u_sample = (0.5.*(1-el_xi(:,1)).*u1+0.5.*(1+el_xi(:,1)).*u2);
+        v_sample = (0.5.*(1-el_xi(:,2)).*v1+0.5.*(1+el_xi(:,2)).*v2);
         CP = Nurbs2D.cPoints{k}(:,iu-Nurbs2D.order{k}(1)+1:iu, iv-Nurbs2D.order{k}(2)+1:iv);
         if N == 0
-            nx = 2; ny = 2;
+            n_xi = 4;
         else
-            nx = N+1; ny = N+1;
+            n_xi = (N+1)^2;
         end
-        for i = 1:ny
-            for j = 1:nx
-                dNu = dersbasisfuns(iu,u_sample(j),Nurbs2D.order{k}(1)-1,1,Nurbs2D.knots.U{k});
-                dNv = dersbasisfuns(iv,v_sample(i),Nurbs2D.order{k}(2)-1,1,Nurbs2D.knots.V{k});
-                [~,dS] = derRat2DBasisFuns(dNu,dNv,Nurbs2D.order{k}(1),Nurbs2D.order{k}(2),CP,1,1);
-                nodeData(count_node,:) = epsilon.*(dS(:,1,1)'./epsilon);
-                %
-                count_node = count_node+1;
-            end
+        for i = 1:n_xi
+            dNu = dersbasisfuns(iu,u_sample(i),Nurbs2D.order{k}(1)-1,1,Nurbs2D.knots.U{k});
+            dNv = dersbasisfuns(iv,v_sample(i),Nurbs2D.order{k}(2)-1,1,Nurbs2D.knots.V{k});
+            [~,dS] = derRat2DBasisFuns(dNu,dNv,Nurbs2D.order{k}(1),Nurbs2D.order{k}(2),CP,1,1);
+            nodeData(count_node,:) = epsilon.*(dS(:,1,1)'./epsilon);
+            count_node = count_node+1;
         end
     end
 end
-%
+%-Connectivity
 TOL = 1e-3;
-[nodes_sem, IA, IC] = uniquetol(nodeData, TOL, 'ByRows', true);
+[nodes,~,IC] = uniquetol(nodeData, TOL, 'ByRows', true);
 if N == 0
-    elemNode = reshape(IC, 4, nel).';
-    conn_sem = zeros(nel, local_dof*4);
+    elemNode = reshape(IC,4,nel).';
+    conn = zeros(nel,local_dof*4);
 else
-    elemNode = reshape(IC, (N+1)*(N+1), nel).';
-    conn_sem = zeros(nel, local_dof*(N+1)*(N+1));
+    elemNode = reshape(IC,(N+1)*(N+1),nel).';
+    conn = zeros(nel,local_dof*(N+1)*(N+1));
 end
 for d = 1:local_dof
-    conn_sem(:, d:local_dof:end) = local_dof*elemNode - (local_dof - d);
+    conn(:, d:local_dof:end) = local_dof*elemNode - (local_dof - d);
 end
-bem2D.nodes = nodes_sem;
-bem2D.conn = conn_sem;
+bem2D.nodes = nodes;
+bem2D.conn = conn;
+if N == 0 || N == 1
+    bem2D.n = cross(nodes(conn(:,2),:)-nodes(conn(:,1),:),...
+                    nodes(conn(:,3),:)-nodes(conn(:,1),:),2);
+    bem2D.n = bem2D.n./(vecnorm(bem2D.n')');
+    %
+    bem2D.A = 0.5.*(vecnorm(cross(nodes(conn(:,2),:)-nodes(conn(:,1),:),nodes(conn(:,3),:)-nodes(conn(:,1),:), 2),2,2)+...
+                    vecnorm(cross(nodes(conn(:,3),:)-nodes(conn(:,1),:),nodes(conn(:,4),:)-nodes(conn(:,1),:),2),2,2));
+end
+if N == 0
+    bem2D.snodes = 0.25.*(bem2D.nodes(bem2D.conn(:,1),:)+bem2D.nodes(bem2D.conn(:,2),:)+...
+                          bem2D.nodes(bem2D.conn(:,3),:)+bem2D.nodes(bem2D.conn(:,4),:));
+end
+iga2DmeshPlotNURBS(Nurbs2D);
+hold on
+scatter3(bem2D.nodes(:,1),bem2D.nodes(:,2),bem2D.nodes(:,3),80,'b','filled');
+scatter3(bem2D.snodes(:,1),bem2D.snodes(:,2),bem2D.snodes(:,3),80,'r','filled');
+quiver3(bem2D.snodes(:,1),bem2D.snodes(:,2),bem2D.snodes(:,3),...
+        bem2D.n(:,1),bem2D.n(:,2),bem2D.n(:,3));
+hold off
