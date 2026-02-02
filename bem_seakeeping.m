@@ -1,452 +1,62 @@
 function [H,G,C,b] = bem_seakeeping(bem2D,we,L)
-%-Initialize BEM Matrices:
+%
 if bem2D.N == 0
     ns = bem2D.nel;
 end
+%-Initialize BEM Matrices:
 H = zeros(ns,ns);
 G = zeros(ns,ns);
 C = zeros(ns,ns);
 b = zeros(ns,ns);
-%- Form BEM Matrices:
+%
 count = 0;
-% Loop over Wet Patches:
-for i = 1:bem2D.nel
-    count = count + 1;
-    psn_s = bem2D.snodes(i,:);
-    for el = 1:bem2D.nel
-        %Physical Position of Mid-Point:
-        psn_f = bem2D.snodes(el,:);
-        dist = norm(psn_f-psn_s)/sqrt(bem2D.A(i));
-        if dist == 0
-            [xgp,wgp,ngp] = gaussQuad2d(4,4);
-        elseif dist < 0.05 && dist > 0
-            [xgp,wgp,ngp] = gaussQuad2d(4,4);
-        elseif dist < 0.1 && dist >= 0.05
-            [xgp,wgp,ngp] = gaussQuad2d(4,4);
-        elseif dist < 0.15 && dist >= 0.1
-            [xgp,wgp,ngp] = gaussQuad2d(4,4);
-        elseif dist < 0.2 && dist >= 0.15
-            [xgp,wgp,ngp] = gaussQuad2d(2,2);
-        elseif dist < 0.25 && dist >= 0.2
-            [xgp,wgp,ngp] = gaussQuad2d(2,2);
-        elseif dist < 0.3 && dist >= 0.25
-            [xgp,wgp,ngp] = gaussQuad2d(2,2);
-        elseif dist < 0.35 && dist >= 0.3
-            [xgp,wgp,ngp] = gaussQuad2d(2,2);
-        elseif dist < 0.4 && dist >= 0.35
-            [xgp,wgp,ngp] = gaussQuad2d(2,2);
-        else
-            [xgp,wgp,ngp] = gaussQuad2d(2,2);
-        end
-        lm_loc  = reshape(fliplr(Nurbs2D.LM{ll}(:,:,el)),1,Nurbs2D.nen{ll});
-        %Check if Collocation Point is on the same Element:
-        if (ll == paraPstn1(3)) && (Nurbs2D.knots.U{ll}(iu2)+1E-4 < paraPstn1(1)) && (paraPstn1(1) < Nurbs2D.knots.U{ll}(iu2+1)-1E-4) && (Nurbs2D.knots.V{ll}(iv2)+1E-4 < paraPstn1(2)) && (paraPstn1(2) < Nurbs2D.knots.V{ll}(iv2+1)-1E-4)
-            %Perform numerical integdistn over 4 subdomains:
-            for jj = 1:ngp
-                %First Subdomain:
-                cu1_1 = (Nurbs2D.knots.U{ll}(iu2)+paraPstn1(1));
-                cu2_1 = (paraPstn1(1)-Nurbs2D.knots.U{ll}(iu2));
-                u_1 = (cu1_1+cu2_1*xgp(jj,1))/2;
-                cv1_1 = (Nurbs2D.knots.V{ll}(iv2)+paraPstn1(2));
-                cv2_1 = (paraPstn1(2)-Nurbs2D.knots.V{ll}(iv2));
-                v_1 = (cv1_1+cv2_1*xgp(jj,2))/2;
-                %Second Subdomain:
-                cu1_2 = (paraPstn1(1) + Nurbs2D.knots.U{ll}(iu2+1));
-                cu2_2 = (Nurbs2D.knots.U{ll}(iu2+1) - paraPstn1(1));
-                u_2 = (cu1_2+cu2_2*xgp(jj,1))/2;
-                cv1_2 = (Nurbs2D.knots.V{ll}(iv2)+paraPstn1(2));
-                cv2_2 = (paraPstn1(2)-Nurbs2D.knots.V{ll}(iv2));
-                v_2 = (cv1_2+cv2_2*xgp(jj,2))/2;
-                %Third Subdomain:
-                cu1_3 = (Nurbs2D.knots.U{ll}(iu2)+paraPstn1(1));
-                cu2_3 = (paraPstn1(1)-Nurbs2D.knots.U{ll}(iu2));
-                u_3 = (cu1_3+cu2_3*xgp(jj,1))/2;
-                cv1_3 = (paraPstn1(2) + Nurbs2D.knots.V{ll}(iv2+1));
-                cv2_3 = (Nurbs2D.knots.V{ll}(iv2+1) - paraPstn1(2));
-                v_3 = (cv1_3+cv2_3*xgp(jj,2))/2;
-                %Fourth Subdomain:
-                cu1_4 = (paraPstn1(1) + Nurbs2D.knots.U{ll}(iu2+1));
-                cu2_4 = (Nurbs2D.knots.U{ll}(iu2+1)-paraPstn1(1));
-                u_4 = (cu1_4+cu2_4*xgp(jj,1))/2;
-                cv1_4 = (paraPstn1(2) + Nurbs2D.knots.V{ll}(iv2+1));
-                cv2_4 = (Nurbs2D.knots.V{ll}(iv2+1) - paraPstn1(2));
-                v_4 = (cv1_4+cv2_4*xgp(jj,2))/2;
-                %Shape Functions:
-                dNu1 = dersbasisfuns(iu2,u_1,Nurbs2D.order{ll}(1)-1,1,Nurbs2D.knots.U{ll});
-                dNv1 = dersbasisfuns(iv2,v_1,Nurbs2D.order{ll}(2)-1,1,Nurbs2D.knots.V{ll});
-                dNu2 = dersbasisfuns(iu2,u_2,Nurbs2D.order{ll}(1)-1,1,Nurbs2D.knots.U{ll});
-                dNv2 = dersbasisfuns(iv2,v_2,Nurbs2D.order{ll}(2)-1,1,Nurbs2D.knots.V{ll});
-                dNu3 = dersbasisfuns(iu2,u_3,Nurbs2D.order{ll}(1)-1,1,Nurbs2D.knots.U{ll});
-                dNv3 = dersbasisfuns(iv2,v_3,Nurbs2D.order{ll}(2)-1,1,Nurbs2D.knots.V{ll});
-                dNu4 = dersbasisfuns(iu2,u_4,Nurbs2D.order{ll}(1)-1,1,Nurbs2D.knots.U{ll});
-                dNv4 = dersbasisfuns(iv2,v_4,Nurbs2D.order{ll}(2)-1,1,Nurbs2D.knots.V{ll});
-                %Position Vectors:
-                [dR1,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{ll}(1),Nurbs2D.order{ll}(2),CP2,1,1);
-                [dR2,dS2] = derRat2DBasisFuns(dNu2,dNv2,Nurbs2D.order{ll}(1),Nurbs2D.order{ll}(2),CP2,1,1);
-                [dR3,dS3] = derRat2DBasisFuns(dNu3,dNv3,Nurbs2D.order{ll}(1),Nurbs2D.order{ll}(2),CP2,1,1);
-                [dR4,dS4] = derRat2DBasisFuns(dNu4,dNv4,Nurbs2D.order{ll}(1),Nurbs2D.order{ll}(2),CP2,1,1);
-                position2_1 = transpose(dS1(:,1,1));
-                position2_2 = transpose(dS2(:,1,1));
-                position2_3 = transpose(dS3(:,1,1));
-                position2_4 = transpose(dS4(:,1,1));
-                r_vector1 = position2_1-position1;
-                r_vector2 = position2_2-position1;
-                r_vector3 = position2_3-position1;
-                r_vector4 = position2_4-position1;
-                %From Physical to Parametric:
-                a1_1 = dS1(:,2,1);
-                a2_1 = dS1(:,1,2);
-                J1_1 = norm(cross(a1_1,a2_1));
-                a1_2 = dS2(:,2,1);
-                a2_2 = dS2(:,1,2);
-                J1_2 = norm(cross(a1_2,a2_2));
-                a1_3 = dS3(:,2,1);
-                a2_3 = dS3(:,1,2);
-                J1_3 = norm(cross(a1_3,a2_3));
-                a1_4 = dS4(:,2,1);
-                a2_4 = dS4(:,1,2);
-                J1_4 = norm(cross(a1_4,a2_4));
-                %Distances:
-                r1 = sqrt(sum(r_vector1.^2));
-                r2 = sqrt(sum(r_vector2.^2));
-                r3 = sqrt(sum(r_vector3.^2));
-                r4 = sqrt(sum(r_vector4.^2));
-                %From Parametric to Parent
-                J2_1 = diag([paraPstn1(1) - Nurbs2D.knots.U{ll}(iu2),...
-                    paraPstn1(2) - Nurbs2D.knots.V{ll}(iv2)])/2;
-                J2_2 = diag([Nurbs2D.knots.U{ll}(iu2+1) - paraPstn1(1),...
-                    paraPstn1(2) - Nurbs2D.knots.V{ll}(iv2)])/2;
-                J2_3 = diag([paraPstn1(1) - Nurbs2D.knots.U{ll}(iu2),...
-                    Nurbs2D.knots.V{ll}(iv2+1) - paraPstn1(2)])/2;
-                J2_4 = diag([Nurbs2D.knots.U{ll}(iu2+1) - paraPstn1(1),...
-                    Nurbs2D.knots.V{ll}(iv2+1) - paraPstn1(2)])/2;
-                %Surface Normal Vector:
-                n2_1 = cross(a1_1,a2_1)./J1_1;
-                n2_2 = cross(a1_2,a2_2)./J1_2;
-                n2_3 = cross(a1_3,a2_3)./J1_3;
-                n2_4 = cross(a1_4,a2_4)./J1_4;
-                %Jacobian
-                J1 = J1_1*det(J2_1);
-                J2 = J1_2*det(J2_2);
-                J3 = J1_3*det(J2_3);
-                J4 = J1_4*det(J2_4);
-                %dr_dn
-                dr_dn_1 = (r_vector1*n2_1)/r1;
-                dr_dn_2 = (r_vector2*n2_2)/r2;
-                dr_dn_3 = (r_vector3*n2_3)/r3;
-                dr_dn_4 = (r_vector4*n2_4)/r4;
-                %Reshape Shape Functions:
-                dR1B = reshape(dR1(:,:,1,1),1,Nurbs2D.nen{ll});
-                dR2B = reshape(dR2(:,:,1,1),1,Nurbs2D.nen{ll});
-                dR3B = reshape(dR3(:,:,1,1),1,Nurbs2D.nen{ll});
-                dR4B = reshape(dR4(:,:,1,1),1,Nurbs2D.nen{ll});
-                %BEM Matrix:
-                Xdless = position1./(L);
-                Xidless1 = position2_1./(L);
-                Xidless2 = position2_2./(L);
-                Xidless3 = position2_3./(L);
-                Xidless4 = position2_4./(L);
-                f = we^2*L/9.81;
-                [GFS1,GxFS1] = freeSurfGreenFuncModern(Xidless1(1),Xidless1(2),Xidless1(3),Xdless(1),Xdless(2),Xdless(3),f);
-                [GFS2,GxFS2] = freeSurfGreenFuncModern(Xidless2(1),Xidless2(2),Xidless2(3),Xdless(1),Xdless(2),Xdless(3),f);
-                [GFS3,GxFS3] = freeSurfGreenFuncModern(Xidless3(1),Xidless3(2),Xidless3(3),Xdless(1),Xdless(2),Xdless(3),f);
-                [GFS4,GxFS4] = freeSurfGreenFuncModern(Xidless4(1),Xidless4(2),Xidless4(3),Xdless(1),Xdless(2),Xdless(3),f);
-                G(colCount1,lm_loc) = G(colCount1,lm_loc) + (-1*GFS1*wgp(jj)*J1).*dR1B +...
-                    (-1*GFS2*wgp(jj)*J2).*dR2B +...
-                    (-1*GFS3*wgp(jj)*J3).*dR3B +...
-                    (-1*GFS4*wgp(jj)*J4).*dR4B;
-                H(colCount1,lm_loc) = H(colCount1,lm_loc) + (-1*(GxFS1(1)*n2_1(1)+GxFS1(2)*n2_1(2)+GxFS1(3)*n2_1(3))*wgp(jj)*J1).*dR1B+...
-                    (-1*(GxFS2(1)*n2_2(1)+GxFS2(2)*n2_2(2)+GxFS2(3)*n2_2(3))*wgp(jj)*J2).*dR2B+...
-                    (-1*(GxFS3(1)*n2_3(1)+GxFS3(2)*n2_3(2)+GxFS3(3)*n2_3(3))*wgp(jj)*J3).*dR3B+...
-                    (-1*(GxFS4(1)*n2_4(1)+GxFS4(2)*n2_4(2)+GxFS4(3)*n2_4(3))*wgp(jj)*J4).*dR4B;
-                C(colCount1,colCount1) = C(colCount1,colCount1) + ((-1/(4*pi*r1^2))*(dr_dn_1)*wgp(jj)*J1)+...
-                    ((-1/(4*pi*r2^2))*(dr_dn_2)*wgp(jj)*J2)+...
-                    ((-1/(4*pi*r3^2))*(dr_dn_3)*wgp(jj)*J3)+...
-                    ((-1/(4*pi*r4^2))*(dr_dn_4)*wgp(jj)*J4);
+%
+if bem2D.N == 0
+    for i = 1:ns
+        count = count + 1;
+        xs = bem2D.snodes(i,:);
+        xs_im = [xs(1) xs(2) -xs(3)];
+        for el = 1:bem2D.nel
+            xf = bem2D.snodes(el,:);
+            dist = norm(xf-xs)/sqrt(bem2D.A(i));
+            if dist == 0
+                [xgp,wgp,ngp] = gaussQuad2d(4,4);
+            elseif dist < 0.05 && dist > 0
+                [xgp,wgp,ngp] = gaussQuad2d(4,4);
+            elseif dist < 0.1 && dist >= 0.05
+                [xgp,wgp,ngp] = gaussQuad2d(4,4);
+            elseif dist < 0.15 && dist >= 0.1
+                [xgp,wgp,ngp] = gaussQuad2d(4,4);
+            elseif dist < 0.2 && dist >= 0.15
+                [xgp,wgp,ngp] = gaussQuad2d(2,2);
+            elseif dist < 0.25 && dist >= 0.2
+                [xgp,wgp,ngp] = gaussQuad2d(2,2);
+            elseif dist < 0.3 && dist >= 0.25
+                [xgp,wgp,ngp] = gaussQuad2d(2,2);
+            elseif dist < 0.35 && dist >= 0.3
+                [xgp,wgp,ngp] = gaussQuad2d(2,2);
+            elseif dist < 0.4 && dist >= 0.35
+                [xgp,wgp,ngp] = gaussQuad2d(2,2);
+            else
+                [xgp,wgp,ngp] = gaussQuad2d(2,2);
             end
-        else
-            for jj = 1:ngp
-                %Parametric Locations:
-                cu1 = (Nurbs2D.knots.U{ll}(iu2)+Nurbs2D.knots.U{ll}(iu2+1));
-                cu2 = (Nurbs2D.knots.U{ll}(iu2+1)-Nurbs2D.knots.U{ll}(iu2));
-                u2 = (cu1+cu2*xgp(jj,1))/2;
-                cv1 = (Nurbs2D.knots.V{ll}(iv2)+Nurbs2D.knots.V{ll}(iv2+1));
-                cv2 = (Nurbs2D.knots.V{ll}(iv2+1)-Nurbs2D.knots.V{ll}(iv2));
-                v2 = (cv1+cv2*xgp(jj,2))/2;
-                %Shape Functions:
-                dNu2 = dersbasisfuns(iu2,u2,Nurbs2D.order{ll}(1)-1,1,Nurbs2D.knots.U{ll});
-                dNv2 = dersbasisfuns(iv2,v2,Nurbs2D.order{ll}(2)-1,1,Nurbs2D.knots.V{ll});
-                %Position Vector:
-                [dR2,dS2] = derRat2DBasisFuns(dNu2,dNv2,Nurbs2D.order{ll}(1),Nurbs2D.order{ll}(2),CP2,1,1);
-                position2 = transpose(dS2(:,1,1));
-                r_vector = position2-position1;
-                %From Physical to Parametric:
-                a1_2 = dS2(:,2,1);
-                a2_2 = dS2(:,1,2);
-                J1 = norm(cross(a1_2,a2_2));
-                %Surface Normal Vector:
-                n2 = cross(a1_2,a2_2)./J1;
-                %Distance:
-                r = sqrt(sum(r_vector.^2));
-                %From Parametric to Parent:
-                J2 = diag([Nurbs2D.knots.U{ll}(iu2+1) - Nurbs2D.knots.U{ll}(iu2),...
-                    Nurbs2D.knots.V{ll}(iv2+1) - Nurbs2D.knots.V{ll}(iv2)])/2;
-                %Jacobian:
-                J = J1*det(J2);
-                %Check Surface Normal Direction:
-                dr_dn = (r_vector*n2)/r;
-                %Reshape Shape Functions:
-                dR2B = reshape(dR2(:,:,1,1),1,Nurbs2D.nen{ll});
+            %
+            [N, dN] = shapefunc2D(xgp(:,1),xgp(:,2),bem2D.N);
+            %
+            for gp = 1:ngp
+                xf_gp = N(gp,:)*sem2D.nodes(sem2D.conn(el,:),:);
+                a1j = dN(1,:,gp)*sem2D.nodes(sem2D.conn(el,:),:);
+                a2j = dN(2,:,gp)*sem2D.nodes(sem2D.conn(el,:),:);
+                J = norm(cross(a1j,a2j));
+                r_vec = xf_gp-xs;
                 %BEM Matrices:
                 Xdless = position1./(L);
                 Xidless = position2./(L);
                 f = we^2*L/9.81;
                 [GFS,GxFS] = freeSurfGreenFuncModern(Xidless(1),Xidless(2),Xidless(3),Xdless(1),Xdless(2),Xdless(3),f);
-                C(colCount1,colCount1) = C(colCount1,colCount1) - ((1/(4*pi*r^2))*(dr_dn)*wgp(jj)*J);
-                H(colCount1,lm_loc) = H(colCount1,lm_loc) + (-1*(GxFS(1)*n2(1)+GxFS(2)*n2(2)+GxFS(3)*n2(3))*wgp(jj)*J).*dR2B;
-                G(colCount1,lm_loc) = G(colCount1,lm_loc) + (-1*GFS*wgp(jj)*J).*dR2B;
+                H(i,el) = H(i,el) + (-1*(GxFS(1)*n2(1)+GxFS(2)*n2(2)+GxFS(3)*n2(3))*wgp(gp)*J).*N(gp,:);
+                G(i,el) = G(i,el) + (-1*GFS*wgp(gp)*J).*N(gp,:);
             end
-        end
-    end
-end
-
-%---------------------
-% ELASTIC MODES
-%---------------------
-for mm = 1:Nurbs2D.modeNum
-    colCount1 = 0;
-    for kk = 2:2
-        for i = 1:Nurbs2D.nnp{kk}
-            colCount1 = colCount1 + 1;
-            %Parametric Location of the Collocation Point:
-            u1 = Nurbs2D.paraCol{kk}(i,1);
-            v1 = Nurbs2D.paraCol{kk}(i,2);
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{kk}(1),Nurbs2D.order{kk}(1)-1,u1,Nurbs2D.knots.U{kk});
-            iv1 = findspan(Nurbs2D.number{kk}(2),Nurbs2D.order{kk}(2)-1,v1,Nurbs2D.knots.V{kk});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{kk}(:, iu1-Nurbs2D.order{kk}(1)+1:iu1, iv1 - Nurbs2D.order{kk}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1,Nurbs2D.order{kk}(1)-1,1,Nurbs2D.knots.U{kk});
-            dNv1 = dersbasisfuns(iv1,v1,Nurbs2D.order{kk}(2)-1,1,Nurbs2D.knots.V{kk});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{kk}(1),Nurbs2D.order{kk}(2),CP1,1,1);
-            %Surface Normal Vector:
-            a1_1 = dS1(:,2,1);
-            a2_1 = dS1(:,1,2);
-            J = norm(cross(a1_1,a2_1));
-            n = cross(a1_1,a2_1)./J;
-            % Dry parametric Coordinates:
-            u1_dry = 1-u1;
-            v1_dry = v1/2;
-            %Find Deformed Control Points:
-            dryModeDisp = Nurbs2D.uModes(1:Nurbs2D.dryDofs,mm);
-            dryModeDisp = reshape(dryModeDisp,3,Nurbs2D.number{1}(1),Nurbs2D.number{1}(2));
-            deformedPoints = Nurbs2D.cPoints{1};
-            deformedPoints(1:3,:,:) = deformedPoints(1:3,:,:) + dryModeDisp;
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{1}(1),Nurbs2D.order{1}(1)-1,u1_dry,Nurbs2D.knots.U{1});
-            iv1 = findspan(Nurbs2D.number{1}(2),Nurbs2D.order{1}(2)-1,v1_dry,Nurbs2D.knots.V{1});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{1}(:, iu1-Nurbs2D.order{1}(1)+1:iu1, iv1 - Nurbs2D.order{1}(2)+1:iv1);
-            dCP1 = deformedPoints(:,iu1-Nurbs2D.order{1}(1)+1:iu1,iv1-Nurbs2D.order{1}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1_dry,Nurbs2D.order{1}(1)-1,1,Nurbs2D.knots.U{1});
-            dNv1 = dersbasisfuns(iv1,v1_dry,Nurbs2D.order{1}(2)-1,1,Nurbs2D.knots.V{1});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),CP1,1,1);
-            [~,ds1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),dCP1,1,1);
-            %Deformation:
-            u = ds1(:,1,1)-dS1(:,1,1);
-            b(colCount1,mm) = n'*u;
-        end
-    end
-    %
-    for kk = 3:3
-        for i = 1:Nurbs2D.nnp{kk}
-            colCount1 = colCount1 + 1;
-            %Parametric Location of the Collocation Point:
-            u1 = Nurbs2D.paraCol{kk}(i,1);
-            v1 = Nurbs2D.paraCol{kk}(i,2);
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{kk}(1),Nurbs2D.order{kk}(1)-1,u1,Nurbs2D.knots.U{kk});
-            iv1 = findspan(Nurbs2D.number{kk}(2),Nurbs2D.order{kk}(2)-1,v1,Nurbs2D.knots.V{kk});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{kk}(:, iu1-Nurbs2D.order{kk}(1)+1:iu1, iv1 - Nurbs2D.order{kk}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1,Nurbs2D.order{kk}(1)-1,1,Nurbs2D.knots.U{kk});
-            dNv1 = dersbasisfuns(iv1,v1,Nurbs2D.order{kk}(2)-1,1,Nurbs2D.knots.V{kk});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{kk}(1),Nurbs2D.order{kk}(2),CP1,1,1);
-            %Surface Normal Vector:
-            a1_1 = dS1(:,2,1);
-            a2_1 = dS1(:,1,2);
-            J = norm(cross(a1_1,a2_1));
-            n = cross(a1_1,a2_1)./J;
-            % Dry parametric Coordinates:
-            u1_dry = u1;
-            v1_dry = v1/2;
-            %Find Deformed Control Points:
-            dryModeDisp = Nurbs2D.uModes(1:Nurbs2D.dryDofs,mm);
-            dryModeDisp = reshape(dryModeDisp,3,Nurbs2D.number{1}(1),Nurbs2D.number{1}(2));
-            deformedPoints = Nurbs2D.cPoints{1};
-            deformedPoints(1:3,:,:) = deformedPoints(1:3,:,:) + dryModeDisp;
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{1}(1),Nurbs2D.order{1}(1)-1,u1_dry,Nurbs2D.knots.U{1});
-            iv1 = findspan(Nurbs2D.number{1}(2),Nurbs2D.order{1}(2)-1,v1_dry,Nurbs2D.knots.V{1});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{1}(:, iu1-Nurbs2D.order{1}(1)+1:iu1, iv1 - Nurbs2D.order{1}(2)+1:iv1);
-            dCP1 = deformedPoints(:,iu1-Nurbs2D.order{1}(1)+1:iu1,iv1-Nurbs2D.order{1}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1_dry,Nurbs2D.order{1}(1)-1,1,Nurbs2D.knots.U{1});
-            dNv1 = dersbasisfuns(iv1,v1_dry,Nurbs2D.order{1}(2)-1,1,Nurbs2D.knots.V{1});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),CP1,1,1);
-            [~,ds1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),dCP1,1,1);
-            %Deformation:
-            u = ds1(:,1,1)-dS1(:,1,1);
-            b(colCount1,mm) = n'*u;
-        end
-    end
-    %
-    for kk = 4:4
-        for i = 1:Nurbs2D.nnp{kk}
-            colCount1 = colCount1 + 1;
-            %Parametric Location of the Collocation Point:
-            u1 = Nurbs2D.paraCol{kk}(i,1);
-            v1 = Nurbs2D.paraCol{kk}(i,2);
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{kk}(1),Nurbs2D.order{kk}(1)-1,u1,Nurbs2D.knots.U{kk});
-            iv1 = findspan(Nurbs2D.number{kk}(2),Nurbs2D.order{kk}(2)-1,v1,Nurbs2D.knots.V{kk});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{kk}(:, iu1-Nurbs2D.order{kk}(1)+1:iu1, iv1 - Nurbs2D.order{kk}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1,Nurbs2D.order{kk}(1)-1,1,Nurbs2D.knots.U{kk});
-            dNv1 = dersbasisfuns(iv1,v1,Nurbs2D.order{kk}(2)-1,1,Nurbs2D.knots.V{kk});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{kk}(1),Nurbs2D.order{kk}(2),CP1,1,1);
-            %Surface Normal Vector:
-            a1_1 = dS1(:,2,1);
-            a2_1 = dS1(:,1,2);
-            J = norm(cross(a1_1,a2_1));
-            n = cross(a1_1,a2_1)./J;
-            % Dry parametric Coordinates:
-            u1_dry = 0;
-            v1_dry = v1/2;
-            %Find Deformed Control Points:
-            dryModeDisp = Nurbs2D.uModes(1:Nurbs2D.dryDofs,mm);
-            dryModeDisp = reshape(dryModeDisp,3,Nurbs2D.number{1}(1),Nurbs2D.number{1}(2));
-            deformedPoints = Nurbs2D.cPoints{1};
-            deformedPoints(1:3,:,:) = deformedPoints(1:3,:,:) + dryModeDisp;
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{1}(1),Nurbs2D.order{1}(1)-1,u1_dry,Nurbs2D.knots.U{1});
-            iv1 = findspan(Nurbs2D.number{1}(2),Nurbs2D.order{1}(2)-1,v1_dry,Nurbs2D.knots.V{1});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{1}(:, iu1-Nurbs2D.order{1}(1)+1:iu1, iv1 - Nurbs2D.order{1}(2)+1:iv1);
-            dCP1 = deformedPoints(:,iu1-Nurbs2D.order{1}(1)+1:iu1,iv1-Nurbs2D.order{1}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1_dry,Nurbs2D.order{1}(1)-1,1,Nurbs2D.knots.U{1});
-            dNv1 = dersbasisfuns(iv1,v1_dry,Nurbs2D.order{1}(2)-1,1,Nurbs2D.knots.V{1});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),CP1,1,1);
-            [~,ds1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),dCP1,1,1);
-            %Deformation:
-            u = ds1(:,1,1)-dS1(:,1,1);
-            b(colCount1,mm) = n'*u;
-        end
-    end
-    %
-    for kk = 5:5
-        for i = 1:Nurbs2D.nnp{kk}
-            colCount1 = colCount1 + 1;
-            %Parametric Location of the Collocation Point:
-            u1 = Nurbs2D.paraCol{kk}(i,1);
-            v1 = Nurbs2D.paraCol{kk}(i,2);
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{kk}(1),Nurbs2D.order{kk}(1)-1,u1,Nurbs2D.knots.U{kk});
-            iv1 = findspan(Nurbs2D.number{kk}(2),Nurbs2D.order{kk}(2)-1,v1,Nurbs2D.knots.V{kk});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{kk}(:, iu1-Nurbs2D.order{kk}(1)+1:iu1, iv1 - Nurbs2D.order{kk}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1,Nurbs2D.order{kk}(1)-1,1,Nurbs2D.knots.U{kk});
-            dNv1 = dersbasisfuns(iv1,v1,Nurbs2D.order{kk}(2)-1,1,Nurbs2D.knots.V{kk});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{kk}(1),Nurbs2D.order{kk}(2),CP1,1,1);
-            %Surface Normal Vector:
-            a1_1 = dS1(:,2,1);
-            a2_1 = dS1(:,1,2);
-            J = norm(cross(a1_1,a2_1));
-            n = cross(a1_1,a2_1)./J;
-            % Dry parametric Coordinates:
-            u1_dry = 1;
-            v1_dry = v1/2;
-            %Find Deformed Control Points:
-            dryModeDisp = Nurbs2D.uModes(1:Nurbs2D.dryDofs,mm);
-            dryModeDisp = reshape(dryModeDisp,3,Nurbs2D.number{1}(1),Nurbs2D.number{1}(2));
-            deformedPoints = Nurbs2D.cPoints{1};
-            deformedPoints(1:3,:,:) = deformedPoints(1:3,:,:) + dryModeDisp;
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{1}(1),Nurbs2D.order{1}(1)-1,u1_dry,Nurbs2D.knots.U{1});
-            iv1 = findspan(Nurbs2D.number{1}(2),Nurbs2D.order{1}(2)-1,v1_dry,Nurbs2D.knots.V{1});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{1}(:, iu1-Nurbs2D.order{1}(1)+1:iu1, iv1 - Nurbs2D.order{1}(2)+1:iv1);
-            dCP1 = deformedPoints(:,iu1-Nurbs2D.order{1}(1)+1:iu1,iv1-Nurbs2D.order{1}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1_dry,Nurbs2D.order{1}(1)-1,1,Nurbs2D.knots.U{1});
-            dNv1 = dersbasisfuns(iv1,v1_dry,Nurbs2D.order{1}(2)-1,1,Nurbs2D.knots.V{1});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),CP1,1,1);
-            [~,ds1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),dCP1,1,1);
-            %Deformation:
-            u = ds1(:,1,1)-dS1(:,1,1);
-            b(colCount1,mm) = n'*u;
-        end
-    end
-    %
-    for kk = 6:6
-        for i = 1:Nurbs2D.nnp{kk}
-            colCount1 = colCount1 + 1;
-            %Parametric Location of the Collocation Point:
-            u1 = Nurbs2D.paraCol{kk}(i,1);
-            v1 = Nurbs2D.paraCol{kk}(i,2);
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{kk}(1),Nurbs2D.order{kk}(1)-1,u1,Nurbs2D.knots.U{kk});
-            iv1 = findspan(Nurbs2D.number{kk}(2),Nurbs2D.order{kk}(2)-1,v1,Nurbs2D.knots.V{kk});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{kk}(:, iu1-Nurbs2D.order{kk}(1)+1:iu1, iv1 - Nurbs2D.order{kk}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1,Nurbs2D.order{kk}(1)-1,1,Nurbs2D.knots.U{kk});
-            dNv1 = dersbasisfuns(iv1,v1,Nurbs2D.order{kk}(2)-1,1,Nurbs2D.knots.V{kk});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{kk}(1),Nurbs2D.order{kk}(2),CP1,1,1);
-            %Surface Normal Vector:
-            a1_1 = dS1(:,2,1);
-            a2_1 = dS1(:,1,2);
-            J = norm(cross(a1_1,a2_1));
-            n = cross(a1_1,a2_1)./J;
-            % Dry parametric Coordinates:
-            u1_dry = u1;
-            v1_dry = 0;
-            %Find Deformed Control Points:
-            dryModeDisp = Nurbs2D.uModes(1:Nurbs2D.dryDofs,mm);
-            dryModeDisp = reshape(dryModeDisp,3,Nurbs2D.number{1}(1),Nurbs2D.number{1}(2));
-            deformedPoints = Nurbs2D.cPoints{1};
-            deformedPoints(1:3,:,:) = deformedPoints(1:3,:,:) + dryModeDisp;
-            %Find Knot Spans:
-            iu1 = findspan(Nurbs2D.number{1}(1),Nurbs2D.order{1}(1)-1,u1_dry,Nurbs2D.knots.U{1});
-            iv1 = findspan(Nurbs2D.number{1}(2),Nurbs2D.order{1}(2)-1,v1_dry,Nurbs2D.knots.V{1});
-            %Control Points and Weights:
-            CP1 = Nurbs2D.cPoints{1}(:, iu1-Nurbs2D.order{1}(1)+1:iu1, iv1 - Nurbs2D.order{1}(2)+1:iv1);
-            dCP1 = deformedPoints(:,iu1-Nurbs2D.order{1}(1)+1:iu1,iv1-Nurbs2D.order{1}(2)+1:iv1);
-            %Calculate Shape Functions:
-            dNu1 = dersbasisfuns(iu1,u1_dry,Nurbs2D.order{1}(1)-1,1,Nurbs2D.knots.U{1});
-            dNv1 = dersbasisfuns(iv1,v1_dry,Nurbs2D.order{1}(2)-1,1,Nurbs2D.knots.V{1});
-            %Reference and Current Positions:
-            [~,dS1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),CP1,1,1);
-            [~,ds1] = derRat2DBasisFuns(dNu1,dNv1,Nurbs2D.order{1}(1),Nurbs2D.order{1}(2),dCP1,1,1);
-            %Deformation:
-            u = ds1(:,1,1)-dS1(:,1,1);
-            b(colCount1,mm) = n'*u;
         end
     end
 end
