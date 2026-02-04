@@ -15,7 +15,7 @@ end
 count_node = 1;
 %
 if p == 0
-    xi = [-1 -1; 1 -1; -1 1; 1 1];
+    el_xi = [-1 -1; 1 -1; -1 1; 1 1];
 else
     xi = linspace(-1,1,N+1);
     eta = linspace(-1,1,N+1);
@@ -31,8 +31,8 @@ for k = 1:Nurbs2D.numpatch
         u2 = Nurbs2D.knots.U{k}(iu+1);
         v1 = Nurbs2D.knots.V{k}(iv);
         v2 = Nurbs2D.knots.V{k}(iv+1);
-        u_sample = (0.5.*(1-xi(:,1)).*u1+0.5.*(1+xi(:,1)).*u2);
-        v_sample = (0.5.*(1-xi(:,2)).*v1+0.5.*(1+xi(:,2)).*v2);
+        u_sample = (0.5.*(1-el_xi(:,1)).*u1+0.5.*(1+el_xi(:,1)).*u2);
+        v_sample = (0.5.*(1-el_xi(:,2)).*v1+0.5.*(1+el_xi(:,2)).*v2);
         CP = Nurbs2D.cPoints{k}(:,iu-Nurbs2D.order{k}(1)+1:iu, iv-Nurbs2D.order{k}(2)+1:iv);
         if p == 0
             n_xi = 4;
@@ -65,7 +65,8 @@ bem2D.nodes = nodes;
 bem2D.conn = conn;
 %-Only for Flat Panels
 if p == 0 || p == 1
-    bem2D.n = cross(nodes(conn(:,2),:)-nodes(conn(:,1),:),nodes(conn(:,3),:)-nodes(conn(:,1),:),2);
+    bem2D.n = cross(nodes(conn(:,2),:)-nodes(conn(:,1),:),...
+                    nodes(conn(:,3),:)-nodes(conn(:,1),:),2);
     bem2D.n = bem2D.n./(vecnorm(bem2D.n')');
     %
     bem2D.A = 0.5.*(vecnorm(cross(nodes(conn(:,2),:)-nodes(conn(:,1),:),nodes(conn(:,3),:)-nodes(conn(:,1),:), 2),2,2)+...

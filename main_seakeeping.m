@@ -24,27 +24,27 @@ rho = 1000;
 %-DOF per Node:
 local_dof = 1;
 %-Order:
-N = 0; % 0:constant / 1:linear / 2:quadratic
+p = 0; % 0:constant / 1:linear / 2:quadratic
 %----------------
 % Pre-Processing
 %----------------
 Nurbs2D = iga2Dmesh(FileName,numPatch,local_dof);
 % iga2DmeshPlotNURBS(Nurbs2D);
 %
-bem2D = bem2Dmesh(Nurbs2D,N,local_dof);
+bem2D = bem2Dmesh(Nurbs2D,p,local_dof);
 bem2D.rho = rho;
-bem2D.N = N;
+bem2D.p = p; %-> Element Order
 bem2D.cg = [0,0,-0.2];
 %----------
 % Solution
 %----------
 %-Define the frequencies:
-freq = [0.1:0.1:2.5,3:0.5:5, 6:20];
+freq = [0.5];
 L = 1;
 for i = 1:length(freq)
     %-BEM Matrices:
-    [C,H,G,bn] = bem_seakeeping(bem2D,freq(i),L);
-    [A,B] = addedMass_seakeeping(bem2D);
+    [H,G,C,bn] = bem_seakeeping(bem2D,freq(i),L);
+    % [A,B] = addedMass_seakeeping(bem2D);
 end
 % % [K,M] = global2D(sem2D);
 % % toc;
