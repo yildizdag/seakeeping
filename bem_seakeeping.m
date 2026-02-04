@@ -9,14 +9,15 @@ end
 H = zeros(ns,ns);
 G = zeros(ns,ns);
 C = zeros(ns,ns);
-b = zeros(ns,ns);
+b = zeros(ns,7);
 %
 if bem2D.p == 0
     for i = 1:ns
         xs = bem2D.snodes(i,:);
+        n = bem2D.n(i,:);
         for el = 1:bem2D.nel
             xf = bem2D.snodes(el,:);
-            dist = norm(xf-xs)/sqrt(bem2D.A(i));
+            dist = norm(xf-xs)/bem2D.Lchar;
             if dist == 0
                 [xgp,wgp,ngp] = gaussQuad2d(8,8);
             elseif dist < 1.5 && dist > 0
@@ -83,6 +84,11 @@ if bem2D.p == 0
                 end
             end
         end
+        m = cross((xs-bem2D.cg),n);
+        b(i,1:6) = [n(1), n(2), n(3), m(1), m(2), m(3)];
+        phiI = incident(xs,we,180,1);
+        k = we^2/9.81;
+        b(i,7) = -n(1)*1i*k*cosd(bem2D.beta)*phiI-n(2)*1i*k*sind(bem2D.beta)*phiI-n(3)*k*phiI;
     end
+    C = 0.5.*eye(ns,ns);
 end
-disp(det(G))
