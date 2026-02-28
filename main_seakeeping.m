@@ -17,8 +17,8 @@
 clc; clear; close all;
 addpath('geometry')
 %-Read the Geometry:
-FileName = 'wigley1_';
-numPatch = 2;
+FileName = 'cylinder_';
+numPatch = 3;
 %Parameters:
 rho = 1000;
 %-DOF per Node:
@@ -34,7 +34,7 @@ Nurbs2D = iga2Dmesh(FileName,numPatch,local_dof);
 bem2D = bem2Dmesh(Nurbs2D,p,local_dof);
 bem2D.rho = rho;
 bem2D.p = p; %-Element Order
-bem2D.cg = [0,0,-0.2]; %-Center of Gravity
+bem2D.cg = [0.0,0.0,0.0]; %-Center of Gravity
 bem2D.Lchar = 1;
 bem2D.beta = 180;
 bem2D.zeta = 0.5;
@@ -42,7 +42,7 @@ bem2D.zeta = 0.5;
 % Solution
 %----------
 %-Define the frequencies:
-freq = [0.4];
+freq = [1.2];
 L = 1;
 for i = 1:length(freq)
     %-BEM Matrices:
