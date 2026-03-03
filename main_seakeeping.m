@@ -42,44 +42,57 @@ bem2D.zeta = 0.5;
 % Solution
 %----------
 %-Define the frequencies:
-freq = [1.2];
+freq = [0.1,0.5:1:9.5,11:1.5:26,27.6409];
 L = 1;
 for i = 1:length(freq)
+    disp(i)
     %-BEM Matrices:
     [H,G,C,bn] = bem_seakeeping(bem2D,freq(i),L);
     phi = (C-H)\(G*bn);
-    % [A,B] = addedMass_seakeeping(bem2D);
+    bem2D.phi = phi;
+    bem2D.bn = bn;
+    [A,B] = addedMass_seakeeping(bem2D);
+    fileAdded = fopen([FileName,num2str(freq(i)),'_added.txt'],'w');
+    fileDamping = fopen([FileName,num2str(freq(i)),'_damping.txt'],'w');
+ 	fprintf(fileAdded,'%6.2f\n',freq(i));
+	fprintf(fileDamping,'%6.2f\n',freq(i));
+    for k = 1:6
+        for l = 1:6
+            fprintf(fileAdded,'%12.8f\t',A(k,l));
+            fprintf(fileDamping,'%12.8f\t',B(k,l));
+        end
+        fprintf(fileAdded,'\n');
+        fprintf(fileDamping,'\n');
+    end
+    fclose(fileAdded);
+    fclose(fileDamping);
 end
-% % [K,M] = global2D(sem2D);
-% % toc;
-% % %-Boundary Conditions:
-% % tic;
-% % x_max = max(sem2D.nodes(:,1));
-% % x_min = min(sem2D.nodes(:,1));
-% % y_max = max(sem2D.nodes(:,2));
-% % y_min = min(sem2D.nodes(:,2));
-% % ind = find(sem2D.nodes(:,1)<x_min+1E-3|sem2D.nodes(:,1)>x_max-1E-3|sem2D.nodes(:,2)<y_min+1E-3|sem2D.nodes(:,2)>y_max-1E-3);
-% % BounNodes = unique([3.*ind-2; 3.*ind-1; 3.*ind]);
-% % K(BounNodes,:) = []; K(:,BounNodes) = [];
-% % M(BounNodes,:) = []; M(:,BounNodes) = [];
-% % toc;
-% % tic;
-% % %-Eigenvalue Solver
-% % sigma = 1000;
-% % [V,freq] = eigs(K,M,modeNum,sigma);
-% % [freq,loc] = sort((sqrt(diag(freq)-sigma)));
-% % toc;
-% % V = V(:,loc);
-% % freqHz = freq/2/pi;
-% % %
-% % all_nodes = 1:sem2D.dof;
-% % active = setdiff(all_nodes,BounNodes);
-% % uModes = zeros(sem2D.dof,modeNum);
-% % uModes(active,1:modeNum) = uModes(active,1:modeNum) + V(:,1:modeNum);
-% % sem2D.uModes = uModes;
-% % sem2D.freq = freq;
-% % sem2D.freqHz = freqHz;
-% % %-----------------
-% % % Post-Processing
-% % %-----------------
-% % plotModeShapes(sem2D,modeNumPlot);
+%-----------------
+% Post-Processing
+%-----------------
+L = 1.284;
+g = 9.81;
+R = 0.18;
+rho = 1000;
+Adata = zeros(length(freq),6);
+Bdata = zeros(length(freq),6);
+for i = 1:length(freq)
+    file1 = [FileName,num2str(freq(i)),'_added.txt'];
+    file2 = [FileName,num2str(freq(i)),'_damping.txt'];
+    fileID1 = fopen(file1);
+    fileID2 = fopen(file2);
+    Af = fscanf(fileID1,'%f');
+    Ad = reshape(diag(reshape(Af(2:end),6,6)),1,6);
+    Adata(i,:) = Ad./(L*(R^3/2)*rho*pi^2);
+    Bf = fscanf(fileID2,'%f');
+    Bd = reshape(diag(reshape(Bf(2:end),6,6)),1,6);
+    Bdata(i,:) = Bd.*freq(i)./(L*(R^3/2)*rho*pi^2).*sqrt(R/g);
+end
+f = freq.*sqrt(L/g);
+figure;
+subplot(1,2,1)
+plot(f,Adata(:,3));
+xlim([0 10])
+subplot(1,2,2)
+plot(f,Bdata(:,3));
+xlim([0 10])
